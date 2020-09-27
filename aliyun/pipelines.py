@@ -21,6 +21,7 @@ class AliyunPipeline(object):
             os.remove('./aliyun.xlsx')
         spider.logger.info("开始输出xls文件")
         self.wb = Workbook()
+        self.page = 0
         self.wb.alignments = Alignment(horizontal='center', vertical='center')
         self.ws = self.wb.create_sheet(title="host", index=0)
         headers = get_project_settings().get('FIELDS_TO_EXPORT')
@@ -33,6 +34,7 @@ class AliyunPipeline(object):
         :param spider:
         :return:
         """
+        self.page += 1
         setting = get_project_settings()
 
         red_fill = PatternFill("solid", fgColor="FF0000")
@@ -56,11 +58,15 @@ class AliyunPipeline(object):
             self.ws.cell(row_num, 8).fill = red_fill
         #     磁盘数据
         for each in item['disk_list']:
-            begin = each.find('(')
-            end = each.rfind(')')
-            disk_used = each[begin + 1:end]
+            if each.find('(') != -1:
+                begin = each.find('(')
+                end = each.rfind(')')
+                disk_used = each[begin + 1:end]
+            else:
+                disk_used = each
             if float(disk_used.replace('%', '')) >= setting.get('DISK_CORDON'):
                 self.ws.cell(row_num, 9).fill = red_fill
+
         return item
 
     def close_spider(self, spider):
@@ -68,4 +74,5 @@ class AliyunPipeline(object):
         结束时调用
         :param spider:
         """
+        spider.logger.info("结束输出xls文件，共%d页".format(self.page))
         self.wb.save(filename='./aliyun.xlsx')
